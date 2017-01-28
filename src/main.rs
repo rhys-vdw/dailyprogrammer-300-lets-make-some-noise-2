@@ -12,52 +12,51 @@ fn get_config() -> Result<Config, &'static str> {
         return Err("Please supply three arguments")
     };
     Ok(Config {
-        size: try!(args[0].parse().map_err(|_| "`size` must be a valid integer")),
-        rows: try!(args[1].parse().map_err(|_| "`rows` must be a valid integer")),
+        size: try!(args[0].parse().map_err(|_| "`size` must be a positive integer")),
+        rows: try!(args[1].parse().map_err(|_| "`rows` must be a positive integer")),
         rule: try!(args[2].parse().map_err(|_| "`rule` must be 0-255"))
     })
 }
 
 fn print_row(row: &Vec<bool>) {
-    println!("{}", row.iter().map(|value| if *value { '*' } else { ' ' }).collect::<String>());
+    println!("{}", row.iter().map(|value|
+        if *value { '░' } else { ' ' }).collect::<String>()
+    );
 }
 
-/*
-fn get_rule_map(rule: u8) -> Vec<bool> {
-    (..8).iter().map(|i| ((1 << i) & rule) > 0).collect()
+fn initial_state(size: usize) -> Vec<bool> {
+    let mut state = vec![false; size];
+    state[size / 2] = true;
+    state
 }
-*/
 
-fn run_cellular_automaton(config: &Config) {
-    let mut even = vec![false; config.size];
-    even[config.size / 2] = true;
-    let mut odd = vec![false; config.size];
-    print_row(&even);
-    for i in 1..config.rows {
+fn next_state(rule: u8, state: &Vec<bool>) -> Vec<bool> {
+    let size = state.len();
+    let mut result = Vec::with_capacity(size);
+    for i in 0..state.len() {
+        let a = if i == 0 { state[size - 1] } else { state[i - 1] } as u8;
+        let b = state[i] as u8;
+        let c = if i == size - 1 { state[0] } else { state[i + 1] } as u8;
 
-        // Swap buffer each time.
-        let (prev, mut next) = if i % 2 == 0 {
-            (&even, &odd)
-        } else {
-            (&odd, &even)
-        };
+        let pos = a << 2 | b << 1 | c;
+        result.push(rule & (1 << pos) > 0);
+    }
+    result
+}
 
-        for (j, element: mut &bool) in next.iter().enumerate() {
-        //for j in 0..config.size {
-            let a = if j == 0 { 0 } else { prev[j - 1] as u8 };
-            let b = prev[i] as u8;
-            let c = if j == config.size { 0 } else { prev [j + 1] as u8 };
-            
-            let pos = a << 2 | b << 1 | c;
-            element = (config.rule & (1 << pos)) > 0;
-        }
+fn run(config: &Config) {
+    let mut state = initial_state(config.size);
+    print_row(&state);
+    for _ in 2..config.rows {
+        state = next_state(config.rule, &state);
+        print_row(&state);
     }
 }
 
 fn main() {
     let args = get_config();
     match args {
-        Ok(config) => run_cellular_automaton(&config),
+        Ok(config) => run(&config),
         Err(message) => {
             println!("Error {}", message);
             println!("Usage: {} <size> <rows> <rule>", env::args().nth(0).unwrap());
