@@ -54,8 +54,7 @@ fn run(config: &Config) {
 }
 
 fn main() {
-    let args = get_config();
-    match args {
+    match get_config() {
         Ok(config) => run(&config),
         Err(message) => {
             println!("Error {}", message);
